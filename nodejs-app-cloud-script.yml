@@ -7,7 +7,7 @@ users:
     shell: /bin/bash
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh-authorized-keys:
-      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/ygH+CjVBzMqIX3u9LASalv7Cs7nWvDABllXNUpbZH6mj0CqDdKlFnOSJ9HPv+HG/zo4VITy3d/hpF8rOm6CBrWYIrL4Ow8G40JyzhRYgASyp4M2hnM9ndLhhXy5u5gi5scnP1SFutAaQ+VWd8ufIK94X2OpJagx116BlYmQ0dVu0x2CHWwzeYBdtH60gweQ/r4ybNwyzhZQ60QWScn0pMflAx26y8lLrHEMUu5dYRg7M+DN3vYSHaK9BiW9RWRP6MXP8IvDzCkhGBntAYUJg7HSx5sERzbbqgX1/F2ZiDLxiCF7TykDE0KsLSuMrvUQQGfY4/y7XFuOokLCLwzXtOhM6mCSYP1A6ULUZ4a9BdzLe9nMRiBkFWGpXWV5wsjddpDP1t+FDrVqhIQjPNmwpfNtS2z5pMNF0AZFpakszzJuCzJucKVIWTW0GLwR71lgUvjbVU2XTqwU0uuQdU626HIhdHm4uCgxFBVSfhFoG9UsrbJcoFQ+PUl5g/An+RI7Gw4rpO3z3GSdWWukR5BUSTLM5SCkeMpD5z2URZAS0HptVFd+Q+pcVKJOpDTY/d+IYw0VBoScqI8wUctJ6JEl0uqlju4Cui9o452rYZAHv7WkOe6XDPWGDTbN3/iBM3w1uuqEMnORZAF7ofP4Y0BGvef2yzdmcERbWsWZWktSrqQ== mathieu_dufour@hotmail.fr
+      - <%SSH_PUB_KEY%>
 
 
 #Packages upgrade true
@@ -15,11 +15,11 @@ package_upgrade: true
 
 runcmd:
   # Export variable to use later
-  - export SCRIPT_EMAIL=mathieu_dufour@hotmail.fr
-  - export SCRIPT_USERNAME=bloodbee
-  - export SCRIPT_WEBSITE=algoliaextended.com
-  - export SCRIPT_WEBSITE_REPO=https://github.com/bloodbee/algoliaextended.git
-  - export SCRIPT_API_TOKEN=de0fe99c8d0cf3ea9d959b23044afe5c3c002228448cd35ca317479fda70940b
+  - export SCRIPT_EMAIL=<%EMAIL%>
+  - export SCRIPT_USERNAME=<%SECOND_USER_NAME%>
+  - export SCRIPT_WEBSITE=<%TOP_DOMAIN_TO_USE%>
+  - export SCRIPT_WEBSITE_REPO=<%REPOSITORY_GIT_TO_USE%>
+  - export SCRIPT_API_TOKEN=<%DIGITAL_OCEAN_API_KEY%>
   # Get this servers public_ipv4 and droplet_id to use later
   - export SCRIPT_PUBLIC_IPV4=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)
   - export SCRIPT_DROPLET_ID=$(curl -s http://169.254.169.254/metadata/v1/id)
