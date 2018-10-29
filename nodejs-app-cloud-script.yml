@@ -1,0 +1,88 @@
+#cloud-config
+
+#Initial server setup with a new user
+users:
+  - name: bloodbee
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/ygH+CjVBzMqIX3u9LASalv7Cs7nWvDABllXNUpbZH6mj0CqDdKlFnOSJ9HPv+HG/zo4VITy3d/hpF8rOm6CBrWYIrL4Ow8G40JyzhRYgASyp4M2hnM9ndLhhXy5u5gi5scnP1SFutAaQ+VWd8ufIK94X2OpJagx116BlYmQ0dVu0x2CHWwzeYBdtH60gweQ/r4ybNwyzhZQ60QWScn0pMflAx26y8lLrHEMUu5dYRg7M+DN3vYSHaK9BiW9RWRP6MXP8IvDzCkhGBntAYUJg7HSx5sERzbbqgX1/F2ZiDLxiCF7TykDE0KsLSuMrvUQQGfY4/y7XFuOokLCLwzXtOhM6mCSYP1A6ULUZ4a9BdzLe9nMRiBkFWGpXWV5wsjddpDP1t+FDrVqhIQjPNmwpfNtS2z5pMNF0AZFpakszzJuCzJucKVIWTW0GLwR71lgUvjbVU2XTqwU0uuQdU626HIhdHm4uCgxFBVSfhFoG9UsrbJcoFQ+PUl5g/An+RI7Gw4rpO3z3GSdWWukR5BUSTLM5SCkeMpD5z2URZAS0HptVFd+Q+pcVKJOpDTY/d+IYw0VBoScqI8wUctJ6JEl0uqlju4Cui9o452rYZAHv7WkOe6XDPWGDTbN3/iBM3w1uuqEMnORZAF7ofP4Y0BGvef2yzdmcERbWsWZWktSrqQ== mathieu_dufour@hotmail.fr
+
+
+#Packages upgrade true
+package_upgrade: true
+
+runcmd:
+  # Export variable to use later
+  - export SCRIPT_EMAIL=mathieu_dufour@hotmail.fr
+  - export SCRIPT_USERNAME=bloodbee
+  - export SCRIPT_WEBSITE=algoliaextended.com
+  - export SCRIPT_WEBSITE_REPO=https://github.com/bloodbee/algoliaextended.git
+  - export SCRIPT_API_TOKEN=de0fe99c8d0cf3ea9d959b23044afe5c3c002228448cd35ca317479fda70940b
+  # Get this servers public_ipv4 and droplet_id to use later
+  - export SCRIPT_PUBLIC_IPV4=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/address)
+  - export SCRIPT_DROPLET_ID=$(curl -s http://169.254.169.254/metadata/v1/id)
+  # Change to the new user
+  - su - $SCRIPT_USERNAME
+  # More security for ssh
+  - sudo sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config # remove the root ssh login
+  - sudo sed -i -e '$aAllowUsers bloodbee' /etc/ssh/sshd_config #allow our new user to do ssh
+  - sudo restart ssh
+  # Install packages
+  - sudo apt update -y
+  - sudo apt install -y git
+  - sudo curl -sL https://deb.nodesource.com/setup_8.x -o nodesource_setup.sh
+  - sudo bash nodesource_setup.sh
+  - sudo apt install -y nodejs
+  - sudo apt install -y build-essential
+  - sudo apt install -y nginx
+  - sudo npm install -y pm2 -g
+  - sudo add-apt-repository -y ppa:certbot/certbot
+  - sudo apt install -y python-certbot-nginx
+  - sudo apt autoremove -y
+  - sudo curl -sSL https://agent.digitalocean.com/install.sh | sh # install monitoring agent
+  # Clone repo at the good place
+  - sudo mkdir -p /var/www/$SCRIPT_WEBSITE
+  - sudo git clone $SCRIPT_WEBSITE_REPO /var/www/$SCRIPT_WEBSITE
+  - sudo chown -R $SCRIPT_USERNAME:$SCRIPT_USERNAME /var/www/$SCRIPT_WEBSITE
+  - sudo chmod -R 755 /var/www/$SCRIPT_WEBSITE
+  # Configure NGINX
+  - sudo mv /home/website_nginx_conf /etc/nginx/sites-available/$SCRIPT_WEBSITE
+  - sudo sed -i 's/SCRIPT_DOMAIN_PLACEHOLDER/'$SCRIPT_WEBSITE\ www.$SCRIPT_WEBSITE'/' /etc/nginx/sites-available/$SCRIPT_WEBSITE
+  - sudo sudo ln -s /etc/nginx/sites-available/$SCRIPT_WEBSITE /etc/nginx/sites-enabled/
+  - sudo rm /etc/nginx/sites-enabled/default
+  - sudo systemctl restart nginx
+  # Install project packages
+  - cd /var/www/$SCRIPT_WEBSITE
+  - sudo npm install -y
+  - sudo npm update -y
+  # PM2 for managing the website process
+  - cd /var/www/$SCRIPT_WEBSITE
+  - sudo pm2 start npm -- start
+  - sudo pm2 startup systemd
+  - sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $SCRIPT_USERNAME --hp /home/$SCRIPT_USERNAME
+  - sudo pm2 save
+  # Create a domain and subdomain a-record for this droplet
+  - 'curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $SCRIPT_API_TOKEN" -d "{\"type\":\"A\", \"name\":\"www\", \"data\":\"$SCRIPT_PUBLIC_IPV4\"}" https://api.digitalocean.com/v2/domains/$SCRIPT_WEBSITE/records'
+  - 'curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $SCRIPT_API_TOKEN" -d "{\"type\":\"A\", \"name\":\"@\", \"data\":\"$SCRIPT_PUBLIC_IPV4\"}" https://api.digitalocean.com/v2/domains/$SCRIPT_WEBSITE/records'
+  # Certbot for letsencrypt
+  - sudo certbot --nginx -n -d $SCRIPT_WEBSITE -d www.$SCRIPT_WEBSITE --email $SCRIPT_EMAIL --agree-tos --redirect --hsts
+  - sudo certbot renew --dry-run
+
+write_files:
+  - path: /etc/cron.d/letsencrypt_renew
+    content: "15 3 * * * /usr/bin/certbot renew --quiet"
+  - path: /home/website_nginx_conf
+    content: |
+      server {
+        server_name SCRIPT_DOMAIN_PLACEHOLDER;
+        location / {
+          proxy_pass http://localhost:3000;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection 'upgrade';
+          proxy_set_header Host $host;
+          proxy_cache_bypass $http_upgrade;
+        }
+      }
