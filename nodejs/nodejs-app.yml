@@ -1,5 +1,10 @@
 #cloud-config
 
+# Creator : Bloodbee
+# This script intialize a new droplet with a new user, ssh access, cloning nodejs project, daemonizing it with pm2, manage dns servers
+# Tested ? With algoliaextended.com and thebotagency.xyz
+# Before using, replace the keyword <%...%> with your own values
+
 #Initial server setup with a new user
 users:
   - name: bloodbee
