@@ -7,7 +7,7 @@
 
 #Initial server setup with a new user
 users:
-  - name: bloodbee
+  - name: <%SECOND_USER_NAME%>
     groups: sudo
     shell: /bin/bash
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
@@ -32,7 +32,7 @@ runcmd:
   - su - $SCRIPT_USERNAME
   # More security for ssh
   - sudo sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config # remove the root ssh login
-  - sudo sed -i -e '$aAllowUsers bloodbee' /etc/ssh/sshd_config #allow our new user to do ssh
+  - sudo sed -i -e '$aAllowUsers $SCRIPT_USERNAME' /etc/ssh/sshd_config #allow our new user to do ssh
   - sudo restart ssh
   # Install packages
   - sudo apt update -y

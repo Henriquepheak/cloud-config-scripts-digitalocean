@@ -1,0 +1,23 @@
+#cloud-config
+
+# Creator : Bloodbee
+# This script intialize a new droplet with a new user, ssh access, and restrict access to only your new user
+# Tested ? NO
+# Before using, replace the keyword <%...%> with your own values
+
+#Initial server setup with a new user
+users:
+  - name: <%SECOND_USER_NAME%>
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh-authorized-keys:
+      - <%SSH_PUB_KEY%>
+
+runcmd:
+  # Export variable to use later
+  - export SCRIPT_USERNAME=<%SECOND_USER_NAME%>
+  # More security for ssh
+  - sudo sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config # remove the root ssh login
+  - sudo sed -i -e '$aAllowUsers $SCRIPT_USERNAME' /etc/ssh/sshd_config #allow our new user to do ssh
+  - sudo restart ssh
